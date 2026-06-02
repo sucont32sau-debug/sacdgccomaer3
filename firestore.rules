@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      // In development/test, we might not require email verification
+      return isSignedIn(); // For this enterprise prototype, we just rely on login
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (request.auth.token.email == 'sucont3.2sau@gmail.com' || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isValidId(id) {
+       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidAdmin(data) {
+      return data.keys().hasAll(['email', 'createdAt']) &&
+             data.keys().size() == 2 &&
+             data.email is string && data.email.size() <= 200 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidMetadataCreate(data) {
+      return data.keys().hasAll(['competence', 'updatedAt', 'updatedBy', 'spreadsheetCount', 'ugCount', 'status']) &&
+             data.keys().size() == 6 &&
+             data.competence is string && data.competence.size() <= 50 &&
+             data.updatedAt == request.time &&
+             data.updatedBy is string && data.updatedBy.size() <= 200 &&
+             data.spreadsheetCount is number &&
+             data.ugCount is number &&
+             data.status is string && data.status.size() <= 50;
+    }
+
+    function isValidMetadataUpdate(incomingData, existingData) {
+      return incomingData.keys().hasAll(['competence', 'updatedAt', 'updatedBy', 'spreadsheetCount', 'ugCount', 'status']) &&
+             incomingData.keys().size() == 6 &&
+             incomingData.competence is string && incomingData.competence.size() <= 50 &&
+             incomingData.updatedAt == request.time &&
+             incomingData.updatedBy is string && incomingData.updatedBy.size() <= 200 &&
+             incomingData.spreadsheetCount is number &&
+             incomingData.ugCount is number &&
+             incomingData.status is string && incomingData.status.size() <= 50;
+    }
+
+    function isValidUgDocumentCreate(data) {
+      return data.keys().hasAll(['ugCode', 'ugName', 'group', 'consolidatedData', 'competence', 'createdAt']) &&
+             data.keys().size() == 6 &&
+             data.ugCode is string && data.ugCode.size() <= 50 &&
+             data.ugName is string && data.ugName.size() <= 200 &&
+             data.group is string && data.group.size() <= 100 &&
+             data.consolidatedData is string && data.consolidatedData.size() <= 1000000 &&
+             data.competence is string && data.competence.size() <= 50 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidUgDocumentUpdate(incomingData, existingData) {
+      return incomingData.keys().hasAll(['ugCode', 'ugName', 'group', 'consolidatedData', 'competence', 'createdAt']) &&
+             incomingData.keys().size() == 6 &&
+             incomingData.ugCode is string && incomingData.ugCode.size() <= 50 &&
+             incomingData.ugName is string && incomingData.ugName.size() <= 200 &&
+             incomingData.group is string && incomingData.group.size() <= 100 &&
+             incomingData.consolidatedData is string && incomingData.consolidatedData.size() <= 1000000 &&
+             incomingData.competence is string && incomingData.competence.size() <= 50 &&
+             (incomingData.createdAt == existingData.createdAt || incomingData.createdAt == request.time);
+    }
+
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && isAdmin() && isValidAdmin(incoming());
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    match /metadata/{metadataId} {
+      allow get: if isValidId(metadataId) && isVerifiedUser();
+      allow list: if isVerifiedUser();
+      allow create: if isValidId(metadataId) && isAdmin() && isValidMetadataCreate(incoming());
+      allow update: if isValidId(metadataId) && isAdmin() && isValidMetadataUpdate(incoming(), existing());
+    }
+
+    match /ugs/{ugId} {
+      allow get: if isValidId(ugId) && isVerifiedUser();
+      allow list: if isVerifiedUser();
+      allow create: if isValidId(ugId) && isAdmin() && isValidUgDocumentCreate(incoming());
+      allow update: if isValidId(ugId) && isAdmin() && isValidUgDocumentUpdate(incoming(), existing());
+      allow delete: if isValidId(ugId) && isAdmin();
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin privileges",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "DatabaseMetadata": {
+      "title": "Database Metadata",
+      "description": "Metadata for the currently active institutional database",
+      "type": "object",
+      "properties": {
+        "competence": { "type": "string", "description": "MÊS/ANO" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" },
+        "spreadsheetCount": { "type": "number" },
+        "ugCount": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["competence", "updatedAt", "updatedBy", "spreadsheetCount", "ugCount", "status"]
+    },
+    "UgDocument": {
+      "title": "UG Document",
+      "description": "Consolidated DGC data for a specific UG",
+      "type": "object",
+      "properties": {
+        "ugCode": { "type": "string" },
+        "ugName": { "type": "string" },
+        "group": { "type": "string" },
+        "consolidatedData": { "type": "string" },
+        "competence": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ugCode", "ugName", "group", "consolidatedData", "competence", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{userId}": {
+      "schema": "Admin",
+      "description": "Authorized administrators"
+    },
+    "/metadata/current": {
+      "schema": "DatabaseMetadata",
+      "description": "The active metadata for the current loaded DGC data"
+    },
+    "/ugs/{ugId}": {
+      "schema": "UgDocument",
+      "description": "Consolidated data for each UG"
+    }
+  }
+}
